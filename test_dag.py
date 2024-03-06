@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import requests
 from airflow.models import Variable
 from airflow.models.dag import DAG
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator, ShortCircuitOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from requests.adapters import HTTPAdapter
 
@@ -33,12 +33,22 @@ def telegram(text):
         print(f"airflow_test_dag: Ошибка при отправке в telegram -  {err}")
 
 
+def is_scheduled_run_type(**context):
+    return context["dag_run"].run_type == "scheduled"
+
+
 with DAG(
-    "airflow_test_dag",
-    schedule_interval=timedelta(hours=1),
+    dag_id="airflow_test_dag",
+    schedule=timedelta(hours=1),
     start_date=datetime(2024, 3, 3, 0),
     catchup=False,
 ) as dag:
+    is_scheduled_run_type_task = ShortCircuitOperator(
+        task_id="is_scheduled_run_type",
+        python_callable=is_scheduled_run_type,
+        ignore_downstream_trigger_rules=False,
+    )
+
     test_task_1 = PythonOperator(
         task_id="telegram_send_1",
         python_callable=telegram,
@@ -62,4 +72,10 @@ with DAG(
         trigger_dag_id="airflow_test_dag_2",
     )
 
-    test_task_1 >> test_task_2 >> trigger_airflow_test_dag_2
+    (
+        test_task_1
+        >> test_task_2
+        >> is_scheduled_run_type_task
+        >> trigger_airflow_test_dag_2
+    )
+
