@@ -1,7 +1,7 @@
 import urllib
 import urllib.parse
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
 from airflow.models import Variable
@@ -33,8 +33,8 @@ def telegram(text):
 
 
 with DAG(
-    "airflow_test_dag_2",
-    schedule_interval=timedelta(hours=1),
+    dag_id="airflow_test_dag_2",
+    schedule=None,
     start_date=datetime(2024, 3, 3, 0),
     catchup=False,
 ) as dag:
@@ -57,3 +57,4 @@ with DAG(
     )
 
     test_task_1 >> test_task_2
+
